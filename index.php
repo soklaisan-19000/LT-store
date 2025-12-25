@@ -4,10 +4,12 @@ session_start();
 include 'db.php'; // Using your include file for consistency
 
 if (isset($_POST['login'])) {
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    // Changed $email to $user_input to reflect that it can be either email or username
+    $user_input = mysqli_real_escape_string($conn, $_POST['email']);
     $pass = $_POST['password']; 
 
-    $query = "SELECT * FROM users WHERE email='$email' AND password='$pass'";
+    // UPDATED QUERY: Checks both email and username columns
+    $query = "SELECT * FROM users WHERE (email='$user_input' OR username='$user_input') AND password='$pass'";
     $result = mysqli_query($conn, $query);
 
     if (mysqli_num_rows($result) > 0) {
@@ -23,7 +25,7 @@ if (isset($_POST['login'])) {
         }
         exit();
     } else {
-        $error = "Invalid Email or Password!";
+        $error = "Invalid Username/Email or Password!";
     }
 }
 ?>
@@ -164,8 +166,8 @@ if (isset($_POST['login'])) {
         
         <form method="POST">
             <div class="form-group">
-                <i class="fas fa-envelope"></i>
-                <input type="email" name="email" placeholder="Email Address" required>
+                <i class="fas fa-user"></i>
+                <input type="text" name="email" placeholder="Username or Email" required>
             </div>
             <div class="form-group">
                 <i class="fas fa-lock"></i>
