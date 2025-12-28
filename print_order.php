@@ -46,7 +46,7 @@ if (!$info) { die("Order not found."); }
 
     <div class="invoice-header">
         <div class="company-info">
-            <h1>LT SMS</h1>
+            <h1>LT-STORE</h1>
             <p>Order Fulfillment Sheet</p>
         </div>
         <div style="text-align: right;">

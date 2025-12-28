@@ -19,7 +19,7 @@ $fb_link = "https://facebook.com/YOUR_PAGE";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Invoices | LT SMS STORE</title>
+    <title>Print Invoices | LTSTORE</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -128,7 +128,7 @@ $fb_link = "https://facebook.com/YOUR_PAGE";
     <div class="invoice-card">
         <div class="header">
             <div class="brand">
-                <h1>LT SMS STORE</h1>
+                <h1>LT-STORE</h1>
                 <p style="margin:2px 0; font-size: 11px; color:var(--text-muted);">Premium Digital Solutions</p>
             </div>
             <div class="invoice-meta">

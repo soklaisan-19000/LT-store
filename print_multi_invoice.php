@@ -62,7 +62,7 @@ foreach ($data as $item) {
 <div class="invoice-page">
     <div class="header">
         <div class="logo-area">
-            <h1>LT SMS STORE</h1>
+            <h1>LT-STORE</h1>
             <p>Official Sales Invoice</p>
         </div>
         <div class="info-area">
