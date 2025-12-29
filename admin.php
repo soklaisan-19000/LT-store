@@ -14,7 +14,6 @@ $end_date = isset($_GET['end_date']) ? mysqli_real_escape_string($conn, $_GET['e
 
 $date_query = "";
 if (!empty($start_date) && !empty($end_date)) {
-    // Note: Change 'order_date' to your actual column name if different
     $date_query = " WHERE order_date BETWEEN '$start_date 00:00:00' AND '$end_date 23:59:59'";
 }
 
@@ -75,12 +74,19 @@ if (isset($_POST['update_product'])) {
     exit();
 }
 
-// DASHBOARD STATS (Calculated based on filters)
+// DASHBOARD STATS
 $total_products = mysqli_num_rows(mysqli_query($conn, "SELECT id FROM products"));
-$res_orders = mysqli_query($conn, "SELECT price FROM orders $date_query");
-$total_orders_count = mysqli_num_rows($res_orders);
+$res_orders = mysqli_query($conn, "SELECT price, customer_name, contact FROM orders $date_query");
+$total_items_sold = mysqli_num_rows($res_orders);
+
 $total_revenue = 0;
-while($row = mysqli_fetch_assoc($res_orders)) { $total_revenue += $row['price']; }
+$unique_customers = [];
+while($row = mysqli_fetch_assoc($res_orders)) { 
+    $total_revenue += $row['price']; 
+    $customer_key = $row['customer_name'] . $row['contact'];
+    $unique_customers[$customer_key] = true;
+}
+$total_customers_count = count($unique_customers);
 ?>
 
 <!DOCTYPE html>
@@ -88,31 +94,39 @@ while($row = mysqli_fetch_assoc($res_orders)) { $total_revenue += $row['price'];
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="image/photo_2025-08-21_13-04-14.jpg" type="image/x-icon">
     <title>Admin Panel | LT-STORE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root { --sidebar-width: 260px; --primary: #1e293b; --accent: #3b82f6; --bg: #f8fafc; --danger: #ef4444; --success: #10b981; --text-main: #334155; --white: #ffffff; }
         body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); display: flex; color: var(--text-main); }
         
-        .mobile-nav { display: none; background: var(--primary); color: white; padding: 15px; position: fixed; top: 0; width: 100%; z-index: 1000; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        /* Mobile Nav */
+        .mobile-nav { display: none; background: var(--primary); color: white; padding: 12px 20px; position: fixed; top: 0; width: 100%; z-index: 1000; justify-content: space-between; align-items: center; box-sizing: border-box; }
+        .mobile-logo-group { display: flex; align-items: center; gap: 10px; }
+        .mobile-logo-img { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
+
+        /* Sidebar Header & Logo */
         .sidebar { width: var(--sidebar-width); background: var(--primary); color: white; height: 100vh; position: fixed; z-index: 100; transition: 0.3s; }
-        .sidebar h2 { text-align: center; padding: 30px 0; border-bottom: 1px solid rgba(255,255,255,0.05); margin: 0; font-size: 1.5rem; letter-spacing: 2px; }
+        .sidebar-header { padding: 30px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .admin-logo-img { width: 85px; height: 85px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.1); object-fit: cover; margin-bottom: 15px; }
+        .sidebar h2 { margin: 0; font-size: 1.3rem; letter-spacing: 1px; color: #fff; }
         .sidebar-menu { list-style: none; padding: 20px 0; margin: 0; }
-        .sidebar-menu a { color: #94a3b8; text-decoration: none; padding: 15px 30px; display: flex; align-items: center; gap: 15px; }
+        .sidebar-menu a { color: #94a3b8; text-decoration: none; padding: 15px 30px; display: flex; align-items: center; gap: 15px; transition: 0.2s; }
+        .sidebar-menu a:hover { background: rgba(255,255,255,0.05); color: white; }
         
+        /* Content Area */
         .main-content { margin-left: var(--sidebar-width); width: calc(100% - var(--sidebar-width)); padding: 40px; box-sizing: border-box; transition: 0.3s; }
         
-        /* Date Filter Styling */
         .date-filter-box { background: white; padding: 20px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
         .date-filter-box form { display: flex; align-items: flex-end; gap: 15px; flex-wrap: wrap; }
         .date-filter-box label { display: block; font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 5px; }
-        .date-filter-box input { margin: 0; width: auto; }
 
         .stats-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 40px; }
         .stat-card { background: var(--white); padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between; }
         .content-box { background: var(--white); padding: 35px; border-radius: 16px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); margin-bottom: 40px; }
         
-        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 20px; }
+        .table-responsive { width: 100%; overflow-x: auto; margin-top: 20px; }
         table { width: 100%; border-collapse: collapse; min-width: 700px; }
         th { text-align: left; padding: 15px; background: #f1f5f9; color: #64748b; font-size: 0.75rem; text-transform: uppercase; }
         td { padding: 18px 15px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
@@ -123,49 +137,37 @@ while($row = mysqli_fetch_assoc($res_orders)) { $total_revenue += $row['price'];
         .status-DELIVERED { background: #d1fae5; color: #065f46; }
         
         input, textarea, select { width: 100%; padding: 12px; margin: 8px 0 20px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
-        .btn-update { background: var(--accent); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-update { background: #3cb371; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; }
         .btn-filter { background: var(--primary); color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        .action-btns { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         .btn-action { padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: 600; border: 1px solid #ddd; background: white; transition: 0.2s; }
         
         #editOverlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center; }
         .edit-card { background:white; padding:30px; border-radius:15px; width:90%; max-width:500px; }
 
-        #printHeader { display: none; }
-
-        @media (max-width: 992px) { .stats-container { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 768px) {
             .mobile-nav { display: flex; }
             .sidebar { left: -100%; top: 60px; height: calc(100vh - 60px); width: 100%; }
             .sidebar.active { left: 0; }
             .main-content { margin-left: 0; width: 100%; padding: 80px 15px 20px 15px; }
-            .stats-container { grid-template-columns: 1fr; gap: 15px; }
-        }
-
-        @media print {
-            body { background: white; color: black; }
-            .sidebar, .mobile-nav, .stats-container, .date-filter-box, #products, form, .update-col, #orderSearch, .manage-col, .check-col, .action-btns { display: none !important; }
-            .main-content { margin: 0; padding: 0; width: 100%; }
-            .content-box { box-shadow: none; padding: 0; border: none; }
-            #printHeader { display: block !important; text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-            #printHeader h1 { margin: 0; font-size: 24px; color: #1e293b; }
-            table { width: 100%; border: 1px solid #ccc; }
-            th { background: #eee !important; color: black !important; border: 1px solid #ccc; }
-            td { border: 1px solid #ccc; font-size: 12px; }
-            tr:not(.selected-to-print):not(thead tr) { display: none !important; }
-            tr.selected-to-print { display: table-row !important; }
         }
     </style>
 </head>
 <body>
 
     <div class="mobile-nav">
-        <strong>LT-STORE ADMIN</strong>
+        <div class="mobile-logo-group">
+            <img src="image/photo_2025-08-21_13-04-14.jpg" class="mobile-logo-img" alt="Logo">
+            <strong>LT-STORE ADMIN</strong>
+        </div>
         <i class="fas fa-bars fa-lg" onclick="toggleSidebar()" style="cursor:pointer;"></i>
     </div>
 
     <div class="sidebar" id="sidebar">
-        <h2>LT-STORE</h2>
+        <div class="sidebar-header">
+            <img src="image/photo_2025-08-21_13-04-14.jpg" class="admin-logo-img" alt="Logo">
+            <h2>LT-STORE</h2>
+            <p style="margin: 5px 0 0; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Control Panel</p>
+        </div>
         <ul class="sidebar-menu">
             <li><a href="admin.php"><i class="fas fa-chart-line"></i> Dashboard</a></li>
             <li><a href="#orders" onclick="toggleSidebar()"><i class="fas fa-file-invoice-dollar"></i> Sales Report</a></li>
@@ -188,80 +190,92 @@ while($row = mysqli_fetch_assoc($res_orders)) { $total_revenue += $row['price'];
                 </div>
                 <div>
                     <button type="submit" class="btn-filter">Filter Report</button>
-                    <a href="admin.php" class="btn-action" style="text-decoration: none;">Reset</a>
+                    <a href="admin.php" class="btn-action" style="background: #b60505ff; color:white; text-decoration: none;">Reset</a>
                 </div>
             </form>
         </div>
 
-        <div id="printHeader">
-            <h1>LT-STORE SALES REPORT</h1>
-            <p>Period: <?php echo $start_date ?: 'All Time'; ?> to <?php echo $end_date ?: 'Today'; ?></p>
-            <p>Generated on: <?php echo date('Y-m-d H:i:s'); ?></p>
-        </div>
-
         <div class="stats-container">
-            <div class="stat-card"><div class="stat-info"><h3>Total Products</h3><p><?php echo $total_products; ?></p></div><i class="fas fa-tags fa-2x" style="opacity:0.2;"></i></div>
-            <div class="stat-card"><div class="stat-info"><h3>Orders Found</h3><p><?php echo $total_orders_count; ?></p></div><i class="fas fa-shopping-bag fa-2x" style="opacity:0.2;"></i></div>
-            <div class="stat-card"><div class="stat-info"><h3>Revenue</h3><p>$<?php echo number_format($total_revenue, 2); ?></p></div><i class="fas fa-coins fa-2x" style="opacity:0.2;"></i></div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3>Total Products</h3>
+                    <p><?php echo $total_products; ?></p>
+                </div>
+                <i class="fas fa-tags fa-2x" style="opacity:0.2;"></i>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3>Orders Found</h3>
+                    <p style="font-size: 0.9rem; margin: 5px 0;"><strong><?php echo $total_customers_count; ?></strong> Customers</p>
+                    <p style="font-size: 0.9rem; margin: 0;"><strong><?php echo $total_items_sold; ?></strong> Items Sold</p>
+                </div>
+                <i class="fas fa-shopping-bag fa-2x" style="opacity:0.2;"></i>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3>Revenue</h3>
+                    <p>$<?php echo number_format($total_revenue, 2); ?></p>
+                </div>
+                <i class="fas fa-coins fa-2x" style="opacity:0.2;"></i>
+            </div>
         </div>
 
         <div class="content-box" id="orders">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                 <h2 style="margin:0;"><i class="fas fa-file-invoice-dollar" style="color:var(--accent);"></i> Order Management</h2>
                 <div class="action-btns">
-                    <button onclick="printSelectedReport()" class="btn-action"><i class="fas fa-print"></i> Print Report</button>
-                    <button onclick="printMultiInvoice()" class="btn-action" style="background:var(--accent); color:white; border:none;">Print Invoices</button>
+                    <button onclick="printSelectedReport()" class="btn-action" style="background-color: #333; color:white; border:none;"><i class="fas fa-print"></i> Print Report</button>
+                    <button onclick="printMultiInvoice()" class="btn-action" style="background: #eb0f0fff; color:white; border:none;">Print Invoices</button>
                 </div>
             </div>
             
-            <input type="text" id="orderSearch" placeholder="Search by customer name or phone..." onkeyup="filterOrders()" style="width: 100%; max-width: 300px; margin-top: 20px;">
+            <input type="text" id="orderSearch" placeholder="Search orders..." onkeyup="filterOrders()" style="width: 100%; max-width: 300px; margin-top: 20px;">
             
             <div class="table-responsive">
                 <table id="orderTable">
                     <thead>
                         <tr>
-                            <th class="check-col"><input type="checkbox" onclick="toggleAll(this)"></th>
+                            <th><input type="checkbox" onclick="toggleAll(this)"></th>
                             <th>Customer</th>
                             <th>Items</th>
                             <th>Summary</th>
                             <th>Status</th>
-                            <th class="update-col">Action</th>
-                            <th class="manage-col">Manage</th>
+                            <th>Action</th>
+                            <th>Manage</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php
-                        // Updated to respect date filter
                         $orders = mysqli_query($conn, "SELECT id, customer_name, contact, status, MAX(description) as first_desc, COUNT(id) as item_count FROM orders $date_query GROUP BY customer_name, contact ORDER BY id DESC");
                         while($o = mysqli_fetch_assoc($orders)) {
                             $current_status = strtoupper($o['status'] ?? 'PENDING');
-                            ?>
-                            <tr class="order-row">
-                                <td class="check-col"><input type="checkbox" class="row-checkbox" data-id="<?php echo $o['id']; ?>"></td>
-                                <td>
-                                    <div style="font-weight:700;"><?php echo $o['customer_name']; ?></div>
-                                    <div style="font-size:0.8rem; color:#94a3b8;"><?php echo $o['contact']; ?></div>
-                                </td>
-                                <td><?php echo $o['item_count']; ?></td>
-                                <td style="font-size: 0.85rem; max-width: 200px;"><?php echo $o['first_desc']; ?></td>
-                                <td><span class="badge status-<?php echo $current_status; ?>"><?php echo $current_status; ?></span></td>
-                                <td class="update-col">
-                                    <form method="POST" style="display:flex; gap:5px; margin:0;">
-                                        <input type="hidden" name="customer_name" value="<?php echo $o['customer_name']; ?>">
-                                        <input type="hidden" name="contact" value="<?php echo $o['contact']; ?>">
-                                        <select name="status" style="padding:5px; margin:0; width:auto; font-size:0.75rem;">
-                                            <option value="Pending" <?php if($current_status == 'PENDING') echo 'selected'; ?>>Pending</option>
-                                            <option value="Shipped" <?php if($current_status == 'SHIPPED') echo 'selected'; ?>>Shipped</option>
-                                            <option value="Delivered" <?php if($current_status == 'DELIVERED') echo 'selected'; ?>>Delivered</option>
-                                        </select>
-                                        <button type="submit" name="update_status" class="btn-update">OK</button>
-                                    </form>
-                                </td>
-                                <td class="manage-col">
-                                    <a href="invoice.php?id=<?php echo $o['id']; ?>" target="_blank" style="color:var(--accent); margin-right:10px;"><i class="fas fa-file-invoice"></i></a>
-                                    <a href="admin.php?delete_customer_orders=1&name=<?php echo urlencode($o['customer_name']); ?>&contact=<?php echo urlencode($o['contact']); ?>" onclick="return confirm('Delete?')" style="color:var(--danger);"><i class="fas fa-trash-alt"></i></a>
-                                </td>
-                            </tr>
+                        ?>
+                        <tr class="order-row">
+                            <td><input type="checkbox" class="row-checkbox" data-id="<?php echo $o['id']; ?>"></td>
+                            <td>
+                                <div style="font-weight:700;"><?php echo $o['customer_name']; ?></div>
+                                <div style="font-size:0.8rem; color:#94a3b8;"><?php echo $o['contact']; ?></div>
+                            </td>
+                            <td><?php echo $o['item_count']; ?></td>
+                            <td style="font-size: 0.85rem; max-width: 200px;"><?php echo $o['first_desc']; ?></td>
+                            <td><span class="badge status-<?php echo $current_status; ?>"><?php echo $current_status; ?></span></td>
+                            <td>
+                                <form method="POST" style="display:flex; gap:5px; margin:0;">
+                                    <input type="hidden" name="customer_name" value="<?php echo $o['customer_name']; ?>">
+                                    <input type="hidden" name="contact" value="<?php echo $o['contact']; ?>">
+                                    <select name="status" style="padding:5px; margin:0; width:auto; font-size:0.75rem;">
+                                        <option value="Pending" <?php if($current_status == 'PENDING') echo 'selected'; ?>>Pending</option>
+                                        <option value="Shipped" <?php if($current_status == 'SHIPPED') echo 'selected'; ?>>Shipped</option>
+                                        <option value="Delivered" <?php if($current_status == 'DELIVERED') echo 'selected'; ?>>Delivered</option>
+                                    </select>
+                                    <button type="submit" name="update_status" class="btn-update">OK</button>
+                                </form>
+                            </td>
+                            <td>
+                                <a href="invoice.php?id=<?php echo $o['id']; ?>" target="_blank" style="color:var(--accent); margin-right:10px;"><i class="fas fa-file-invoice"></i></a>
+                                <a href="admin.php?delete_customer_orders=1&name=<?php echo urlencode($o['customer_name']); ?>&contact=<?php echo urlencode($o['contact']); ?>" onclick="return confirm('Delete all orders for this customer?')" style="color:var(--danger);"><i class="fas fa-trash-alt"></i></a>
+                            </td>
+                        </tr>
                         <?php } ?>
                     </tbody>
                 </table>
@@ -274,7 +288,7 @@ while($row = mysqli_fetch_assoc($res_orders)) { $total_revenue += $row['price'];
                 <input type="text" name="name" placeholder="Product Name" required>
                 <input type="number" step="0.01" name="price" placeholder="Price ($)" required>
                 <textarea name="description" rows="3" placeholder="Description"></textarea>
-                <label>Product Image</label>
+                <label style="font-size: 0.85rem; font-weight: 700; color: #64748b;">Product Image</label>
                 <input type="file" name="image" accept="image/*">
                 <button type="submit" name="add_product" style="background:var(--primary); color:white; border:none; padding:15px; border-radius:8px; cursor:pointer; width:100%; font-weight:700;">Add Product</button>
             </form>
@@ -291,10 +305,10 @@ while($row = mysqli_fetch_assoc($res_orders)) { $total_revenue += $row['price'];
                         <tr>
                             <td><img src="uploads/<?php echo $img; ?>" class="prod-img"></td>
                             <td><strong><?php echo $p['name']; ?></strong></td>
-                            <td style="color:var(--success); font-weight:700;">$<?php echo $p['price']; ?></td>
+                            <td style="color:var(--success); font-weight:700;">$<?php echo number_format($p['price'], 2); ?></td>
                             <td style="text-align:right;">
-                                <button onclick="openEdit(<?php echo htmlspecialchars(json_encode($p)); ?>)" style="background:none; border:none; color:var(--accent); cursor:pointer; margin-right:10px;">Edit</button>
-                                <a href="admin.php?delete_id=<?php echo $p['id']; ?>" onclick="return confirm('Delete?')" style="color:var(--danger); text-decoration:none;">Delete</a>
+                                <button onclick="openEdit(<?php echo htmlspecialchars(json_encode($p)); ?>)" style="background:none; border:none; color:var(--accent); cursor:pointer; margin-right:10px; font-weight: 600;">Edit</button>
+                                <a href="admin.php?delete_id=<?php echo $p['id']; ?>" onclick="return confirm('Delete this product?')" style="color:var(--danger); text-decoration:none; font-weight: 600;">Delete</a>
                             </td>
                         </tr>
                         <?php } ?>
@@ -333,16 +347,12 @@ while($row = mysqli_fetch_assoc($res_orders)) { $total_revenue += $row['price'];
         function toggleAll(source) { document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = source.checked); }
 
         function printSelectedReport() {
-            let rows = document.querySelectorAll('.order-row');
-            let sel = false;
-            rows.forEach(r => {
-                if(r.querySelector('.row-checkbox').checked) {
-                    r.classList.add('selected-to-print');
-                    sel = true;
-                } else { r.classList.remove('selected-to-print'); }
-            });
-            if(!sel) return alert("Select at least one order first.");
-            window.print();
+            let checked = document.querySelectorAll('.row-checkbox:checked');
+            if (checked.length === 0) return alert("Select at least one order first.");
+            let ids = Array.from(checked).map(cb => cb.getAttribute('data-id')).join(',');
+            let start = document.getElementsByName('start_date')[0].value;
+            let end = document.getElementsByName('end_date')[0].value;
+            window.open(`report_print.php?ids=${ids}&start=${start}&end=${end}`, '_blank');
         }
 
         function printMultiInvoice() {

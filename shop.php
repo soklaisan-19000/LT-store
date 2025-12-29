@@ -28,6 +28,7 @@ $fb_link = "https://facebook.com/YOUR_PAGE";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="shortcut icon" href="image/photo_2025-08-21_13-04-14.jpg" type="image/x-icon">
     <title>LT STORE | Premium Tech</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -117,7 +118,7 @@ $fb_link = "https://facebook.com/YOUR_PAGE";
         .card-footer { padding: 0 12px 12px; display: grid; grid-template-columns: 40px 1fr; gap: 8px; }
         .btn { text-decoration: none; padding: 8px 0; border-radius: 8px; font-weight: 700; font-size: 0.75rem; text-align: center; border: none; cursor: pointer; }
         .btn-cart { background: #f1f5f9; color: var(--primary); }
-        .btn-buy { background: var(--accent); color: white; }
+        .btn-buy { background: #c40000ff; color: white; }
 
         /* Enhanced Footer */
         footer { background: var(--primary); color: white; padding: 50px 6% 20px; margin-top: 50px; }

@@ -14,9 +14,10 @@ $cart_count = count($_SESSION['cart']);
 <head>
     <meta charset="UTF-8">
     <title><?php echo $product['name']; ?> | LT STORE</title>
+    <link rel="shortcut icon" href="image/photo_2025-08-21_13-04-14.jpg" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        :root { --primary: #1e293b; --accent: #3b82f6; --bg: #f8fafc; }
+        :root { --primary: #1e293b; --accent: #000000ff; --bg: #f8fafc; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); padding: 50px 6%; margin:0; }
         .back-link { display: inline-block; margin-bottom: 20px; color: var(--accent); text-decoration: none; font-weight: 600; }
         .container { 
@@ -26,7 +27,7 @@ $cart_count = count($_SESSION['cart']);
         .img-box img { width: 100%; border-radius: 15px; }
         .price { font-size: 2rem; font-weight: 800; color: var(--primary); margin: 20px 0; }
         .description { line-height: 1.6; color: #64748b; margin-bottom: 30px; }
-        .btn-buy { background: var(--accent); color: white; padding: 15px 40px; border-radius: 10px; text-decoration: none; font-weight: 700; display: inline-block; }
+        .btn-buy { background: #c40000ff; color: white; padding: 15px 40px; border-radius: 10px; text-decoration: none; font-weight: 700; display: inline-block; }
         @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
     </style>
 </head>

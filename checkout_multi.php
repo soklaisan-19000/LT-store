@@ -56,7 +56,8 @@ if (isset($_POST['place_order'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Checkout | LT SMS</title>
+    <title>Checkout | LT-STORE</title>
+    <link rel="shortcut icon" href="image/photo_2025-08-21_13-04-14.jpg" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Inter', sans-serif; background: #f8fafc; padding: 40px; color: #334155; margin: 0; }

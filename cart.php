@@ -27,7 +27,8 @@ $grand_total = 0;
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Your Cart | GadgetStore</title>
+    <title>Your Cart | LT-STORE</title>
+    <link rel="shortcut icon" href="image/photo_2025-08-21_13-04-14.jpg" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
