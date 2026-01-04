@@ -1,14 +1,13 @@
 <?php
 session_start();
-// Database connection
-include 'db.php'; // Using your include file for consistency
+include 'db.php'; 
 
 if (isset($_POST['login'])) {
-    // Changed $email to $user_input to reflect that it can be either email or username
     $user_input = mysqli_real_escape_string($conn, $_POST['email']);
     $pass = $_POST['password']; 
 
-    // UPDATED QUERY: Checks both email and username columns
+    // Note: It is highly recommended to use password_hash() and password_verify() 
+    // instead of plain text passwords for real projects.
     $query = "SELECT * FROM users WHERE (email='$user_input' OR username='$user_input') AND password='$pass'";
     $result = mysqli_query($conn, $query);
 
@@ -36,7 +35,6 @@ if (isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | LT-STORE</title>
-    <link rel="shortcut icon" href="image/photo_2025-08-21_13-04-14.jpg" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
@@ -44,6 +42,12 @@ if (isset($_POST['login'])) {
             --accent: #3498db;
             --success: #27ae60;
             --bg: #f4f7f6;
+        }
+
+        /* --- Animations --- */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         body { 
@@ -54,6 +58,7 @@ if (isset($_POST['login'])) {
             align-items: center; 
             height: 100vh;
             margin: 0; 
+            overflow: hidden;
         }
 
         .login-card { 
@@ -63,14 +68,18 @@ if (isset($_POST['login'])) {
             box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
             width: 100%;
             max-width: 380px; 
-            text-align: center; 
+            text-align: center;
+            animation: fadeInUp 0.6s ease-out; /* Apply Animation */
         }
 
         .brand-icon {
             font-size: 3rem;
             color: var(--accent);
             margin-bottom: 15px;
+            transition: transform 0.3s ease;
         }
+        
+        .brand-icon:hover { transform: scale(1.1) rotate(10deg); }
 
         h2 { color: var(--primary); margin: 0 0 10px 0; font-size: 1.8rem; }
         p.subtitle { color: #7f8c8d; margin-bottom: 30px; font-size: 0.9rem; }
@@ -78,14 +87,27 @@ if (isset($_POST['login'])) {
         .form-group {
             position: relative;
             margin-bottom: 20px;
+            text-align: left;
         }
 
-        .form-group i {
+        .form-group i.input-icon {
             position: absolute;
             left: 15px;
             top: 15px;
             color: #bdc3c7;
         }
+
+        /* Toggle Password Style */
+        .toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            color: #bdc3c7;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .toggle-password:hover { color: var(--accent); }
 
         input { 
             width: 100%; 
@@ -110,9 +132,14 @@ if (isset($_POST['login'])) {
             font-size: 16px; 
             font-weight: bold; 
             transition: 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
         }
 
         button:hover { background: var(--accent); transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
 
         .error-box {
             background: #fdf2f2;
@@ -122,14 +149,10 @@ if (isset($_POST['login'])) {
             margin-bottom: 20px;
             font-size: 0.85rem;
             border: 1px solid #f9a8d4;
+            animation: fadeInUp 0.3s ease;
         }
 
-        .divider { 
-            margin: 25px 0; 
-            border-bottom: 1px solid #eee; 
-            position: relative;
-        }
-        
+        .divider { margin: 25px 0; border-bottom: 1px solid #eee; position: relative; }
         .divider span {
             position: absolute;
             top: -10px;
@@ -154,6 +177,7 @@ if (isset($_POST['login'])) {
     </style>
 </head>
 <body>
+
     <div class="login-card">
         <div class="brand-icon"><i class="fas fa-shopping-bag"></i></div>
         <h2>Welcome Back</h2>
@@ -165,21 +189,52 @@ if (isset($_POST['login'])) {
             </div>
         <?php endif; ?>
         
-        <form method="POST">
+        <form method="POST" id="loginForm">
             <div class="form-group">
-                <i class="fas fa-user"></i>
+                <i class="fas fa-user input-icon"></i>
                 <input type="text" name="email" placeholder="Username or Email" required>
             </div>
             <div class="form-group">
-                <i class="fas fa-lock"></i>
-                <input type="password" name="password" placeholder="Password" required>
+                <i class="fas fa-lock input-icon"></i>
+                <input type="password" name="password" id="passwordField" placeholder="Password" required>
+                <i class="fas fa-eye toggle-password" id="toggleEye"></i>
             </div>
-            <button type="submit" name="login">Sign In</button>
+            <button type="submit" name="login" id="submitBtn">
+                <span id="btnText">Sign In</span>
+            </button>
         </form>
 
         <div class="divider"><span>OR</span></div>
 
         <a href="shop.php" class="guest-link">Browse Shop as Guest <i class="fas fa-arrow-right"></i></a>
     </div>
+
+    <script>
+        // 1. Toggle Password Visibility
+        const toggleEye = document.querySelector('#toggleEye');
+        const passwordField = document.querySelector('#passwordField');
+
+        toggleEye.addEventListener('click', function () {
+            // Toggle the type attribute
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            
+            // Toggle the eye icon
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+
+        // 2. Loading Animation on Submit
+        const loginForm = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+
+        loginForm.addEventListener('submit', function() {
+            // Disable button and show loading state
+            submitBtn.style.opacity = "0.7";
+            submitBtn.style.pointerEvents = "none";
+            btnText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+        });
+    </script>
 </body>
 </html>

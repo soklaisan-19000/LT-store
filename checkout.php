@@ -4,12 +4,18 @@ include 'db.php'; // Ensure this file has your mysqli_connect details
 
 // 1. Fetch Product Details for the selected ID
 if(isset($_GET['id'])) {
-    $product_id = mysqli_real_escape_string($conn, $_GET['id']);
+    $product_id = intval($_GET['id']);
+    $qty_requested = isset($_GET['qty']) ? max(1,intval($_GET['qty'])) : 1;
     $res = mysqli_query($conn, "SELECT * FROM products WHERE id = $product_id");
     $item = mysqli_fetch_assoc($res);
     
     if (!$item) {
         header("Location: shop.php");
+        exit();
+    }
+    // If stock is zero, redirect to product page with out of stock message
+    if (intval($item['stock_qty']) <= 0) {
+        header("Location: product-details.php?id={$product_id}&error=outofstock");
         exit();
     }
 } else {
@@ -22,23 +28,34 @@ if(isset($_GET['id'])) {
 
 // 2. Handle Order Submission
 if (isset($_POST['place_order'])) {
-    $p_name = mysqli_real_escape_string($conn, $item['name']);
-    $p_price = $item['price'];
-    $p_image = $item['image']; 
-    
-    $cust_name = mysqli_real_escape_string($conn, $_POST['full_name']);
-    $cust_contact = mysqli_real_escape_string($conn, $_POST['contact']);
-    $cust_address = mysqli_real_escape_string($conn, $_POST['address']);
-    $cust_note = mysqli_real_escape_string($conn, $_POST['customer_note']); 
-    $order_date = date('Y-m-d H:i:s');
-
-    $sql = "INSERT INTO orders (product_name, description, price, customer_name, contact, address, product_image, order_date, status) 
-            VALUES ('$p_name', '$cust_note', '$p_price', '$cust_name', '$cust_contact', '$cust_address', '$p_image', '$order_date', 'Pending')";
-    
-    if(mysqli_query($conn, $sql)) {
-        $success = "Thank you, $cust_name! Your order for " . $item['name'] . " has been placed.";
+    $qty = isset($_POST['qty']) ? max(1, intval($_POST['qty'])) : 1;
+    // validate stock
+    $res_check = mysqli_query($conn, "SELECT stock_qty FROM products WHERE id='$product_id' LIMIT 1");
+    $r = mysqli_fetch_assoc($res_check);
+    $available = isset($r['stock_qty']) ? intval($r['stock_qty']) : 0;
+    if ($qty > $available) {
+        $error = "Requested quantity exceeds stock. Available: $available";
     } else {
-        $error = "Something went wrong: " . mysqli_error($conn);
+        $p_name = mysqli_real_escape_string($conn, $item['name']);
+        $p_price_total = $item['price'] * $qty;
+        $p_image = $item['image']; 
+        
+        $cust_name = mysqli_real_escape_string($conn, $_POST['full_name']);
+        $cust_contact = mysqli_real_escape_string($conn, $_POST['contact']);
+        $cust_address = mysqli_real_escape_string($conn, $_POST['address']);
+        $cust_note = mysqli_real_escape_string($conn, $_POST['customer_note']); 
+        $order_date = date('Y-m-d H:i:s');
+
+        $sql = "INSERT INTO orders (product_name, description, price, customer_name, contact, address, product_image, order_date, status, quantity) 
+                VALUES ('$p_name', '$cust_note', '$p_price_total', '$cust_name', '$cust_contact', '$cust_address', '$p_image', '$order_date', 'Pending', $qty)";
+        
+        if(mysqli_query($conn, $sql)) {
+            // decrement stock and update status atomically (prevent negative qty)
+            mysqli_query($conn, "UPDATE products SET stock_qty = GREATEST(stock_qty - $qty, 0), stock_status = CASE WHEN GREATEST(stock_qty - $qty, 0) <= 0 THEN 'Out of Stock' ELSE 'In Stock' END WHERE id = $product_id");
+            $success = "Thank you, $cust_name! Your order for " . $item['name'] . " has been placed.";
+        } else {
+            $error = "Something went wrong: " . mysqli_error($conn);
+        }
     }
 }
 ?>
@@ -112,10 +129,16 @@ if (isset($_POST['place_order'])) {
                     <div class="product-info">
                         <h3><?php echo $item['name']; ?></h3>
                         <p class="price">$<?php echo number_format($item['price'], 2); ?></p>
+                        <div style="font-size:0.9rem; color:#64748b;">Available: <?php echo intval($item['stock_qty']); ?></div>
                     </div>
                 </div>
 
                 <form method="POST">
+                    <div class="form-group">
+                        <label>Quantity</label>
+                        <input type="number" name="qty" value="<?php echo $qty_requested; ?>" min="1" max="<?php echo intval($item['stock_qty']); ?>" required>
+                    </div>
+
                     <div class="form-group">
                         <i class="fas fa-user"></i>
                         <input type="text" name="full_name" placeholder="Full Name" required>

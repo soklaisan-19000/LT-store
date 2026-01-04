@@ -16,13 +16,14 @@ $grand_total = 0;
 $items_to_buy = [];
 
 if (!empty($_SESSION['cart'])) {
-    foreach ($_SESSION['cart'] as $product_id) {
-        $safe_id = mysqli_real_escape_string($conn, $product_id);
+    foreach ($_SESSION['cart'] as $product_id => $qty) {
+        $safe_id = intval($product_id);
         $res = mysqli_query($conn, "SELECT * FROM products WHERE id = '$safe_id'");
         $p = mysqli_fetch_assoc($res);
         if ($p) {
+            $p['order_qty'] = intval($qty);
             $items_to_buy[] = $p;
-            $grand_total += $p['price'];
+            $grand_total += $p['price'] * $qty;
         }
     }
 }
@@ -35,19 +36,34 @@ if (isset($_POST['place_order'])) {
     $customer_note = mysqli_real_escape_string($conn, $_POST['customer_note']); 
     $order_date = date('Y-m-d H:i:s');
 
+    // Validate stock for all items first
+    foreach ($items_to_buy as $item) {
+        $safe_id = intval($item['id']);
+        $required = intval($item['order_qty']);
+        $res = mysqli_query($conn, "SELECT stock_qty FROM products WHERE id='$safe_id' LIMIT 1");
+        $row = mysqli_fetch_assoc($res);
+        $available = isset($row['stock_qty']) ? intval($row['stock_qty']) : 0;
+        if ($required > $available) {
+            header("Location: cart.php?error=insufficient&available=$available"); exit();
+        }
+    }
+
+    // Insert orders and decrement stock
     foreach ($items_to_buy as $item) {
         $p_name = mysqli_real_escape_string($conn, $item['name']);
-        $p_price = $item['price'];
+        $p_price = $item['price'] * intval($item['order_qty']); // total price
         $p_img = $item['image'];
+        $qty = intval($item['order_qty']);
+        $safe_id = intval($item['id']);
 
-        $sql = "INSERT INTO orders (product_name, description, price, customer_name, contact, product_image, order_date, status) 
-                VALUES ('$p_name', '$customer_note', '$p_price', '$customer_name', '$contact', '$p_img', '$order_date', 'Pending')";
-        
+        $sql = "INSERT INTO orders (product_name, description, price, customer_name, contact, product_image, order_date, status, quantity) 
+                VALUES ('$p_name', '$customer_note', '$p_price', '$customer_name', '$contact', '$p_img', '$order_date', 'Pending', $qty)";
         mysqli_query($conn, $sql);
+        // decrement stock and update status
+        mysqli_query($conn, "UPDATE products SET stock_qty = GREATEST(stock_qty - $qty, 0), stock_status = CASE WHEN GREATEST(stock_qty - $qty, 0) <= 0 THEN 'Out of Stock' ELSE 'In Stock' END WHERE id = $safe_id");
     }
 
     $_SESSION['cart'] = [];
-    // UPDATED FILENAME HERE
     header("Location: checkout_multi.php?success=1&user=" . urlencode($customer_name));
     exit();
 }
@@ -115,11 +131,11 @@ if (isset($_POST['place_order'])) {
     <div class="card">
         <h3>Summary</h3>
         <?php foreach($items_to_buy as $item): ?>
-            <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
                 <img src="uploads/<?php echo $item['image']; ?>" width="40" height="40" style="border-radius:5px;">
-                <div>
+                <div style="flex:1;">
                     <div><?php echo $item['name']; ?></div>
-                    <div style="color:#10b981;">$<?php echo number_format($item['price'], 2); ?></div>
+                    <div style="color:#10b981;">$<?php echo number_format($item['price'], 2); ?> × <?php echo intval($item['order_qty']); ?> = $<?php echo number_format($item['price'] * intval($item['order_qty']), 2); ?></div>
                 </div>
             </div>
         <?php endforeach; ?>

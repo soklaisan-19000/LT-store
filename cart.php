@@ -2,13 +2,11 @@
 session_start();
 include 'db.php'; // Ensure this file has your $conn connection
 
-// 1. Handle Removing an Item from Cart
+// 1. Handle Removing an Item from Cart (by product id)
 if (isset($_GET['remove'])) {
-    $index_to_remove = $_GET['remove'];
-    if (isset($_SESSION['cart'][$index_to_remove])) {
-        unset($_SESSION['cart'][$index_to_remove]);
-        // Re-index the array to keep it clean
-        $_SESSION['cart'] = array_values($_SESSION['cart']);
+    $product_id = intval($_GET['remove']);
+    if (isset($_SESSION['cart'][$product_id])) {
+        unset($_SESSION['cart'][$product_id]);
     }
     header("Location: cart.php?msg=removed");
     exit();
@@ -21,6 +19,21 @@ if (isset($_GET['clear'])) {
     exit();
 }
 
+// 3. Update quantity for an item
+if (isset($_POST['update_qty'])) {
+    $product_id = intval($_POST['product_id']);
+    $qty = max(1, intval($_POST['quantity']));
+    // validate stock
+    $res = mysqli_query($conn, "SELECT stock_qty FROM products WHERE id='$product_id' LIMIT 1");
+    $r = mysqli_fetch_assoc($res);
+    $available = isset($r['stock_qty']) ? intval($r['stock_qty']) : 0;
+    if ($qty > $available) {
+        header("Location: cart.php?error=insufficient&available=$available"); exit();
+    }
+    $_SESSION['cart'][$product_id] = $qty;
+    header("Location: cart.php?msg=updated");
+    exit();
+}
 $grand_total = 0;
 ?>
 <!DOCTYPE html>
@@ -137,20 +150,27 @@ $grand_total = 0;
         
         <div class="cart-items-list">
             <?php 
-            foreach($_SESSION['cart'] as $index => $product_id): 
+            foreach($_SESSION['cart'] as $product_id => $qty): 
                 // Fetch product details for each ID in the cart
-                $res = mysqli_query($conn, "SELECT * FROM products WHERE id = '$product_id'");
+                $safe_id = intval($product_id);
+                $res = mysqli_query($conn, "SELECT * FROM products WHERE id = '$safe_id'");
                 $p = mysqli_fetch_assoc($res);
                 if($p):
-                    $grand_total += $p['price'];
+                    $line_total = $p['price'] * $qty;
+                    $grand_total += $line_total;
             ?>
                 <div class="cart-item">
                     <img src="uploads/<?php echo $p['image'] ?: 'default.jpg'; ?>" class="item-img">
                     <div class="item-info">
                         <h3><?php echo $p['name']; ?></h3>
-                        <p>$<?php echo number_format($p['price'], 2); ?></p>
+                        <p>$<?php echo number_format($p['price'], 2); ?> × <?php echo $qty; ?> = $<?php echo number_format($line_total, 2); ?></p>
+                        <form method="POST" style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+                            <input type="hidden" name="product_id" value="<?php echo $safe_id; ?>">
+                            <input type="number" name="quantity" value="<?php echo $qty; ?>" min="1" max="<?php echo intval($p['stock_qty']); ?>" style="width:80px; padding:6px; border-radius:6px; border:1px solid #e2e8f0;">
+                            <button type="submit" name="update_qty" class="btn btn-checkout" style="padding:8px 12px;">Update</button>
+                        </form>
                     </div>
-                    <a href="cart.php?remove=<?php echo $index; ?>" class="remove-btn" title="Remove Item">
+                    <a href="cart.php?remove=<?php echo $safe_id; ?>" class="remove-btn" title="Remove Item">
                         <i class="fas fa-times-circle"></i>
                     </a>
                 </div>
@@ -164,7 +184,7 @@ $grand_total = 0;
             <span style="color:#7f8c8d; font-weight:600;">Subtotal</span>
             <span class="total-price">$<?php echo number_format($grand_total, 2); ?></span>
             
-            <div style="display:flex; justify-content: flex-end; align-items:center;">
+            <div style="display:flex; justify-content: flex-end; align-items:center; gap:8px;">
                 <a href="shop.php" class="btn-back"><i class="fas fa-arrow-left"></i> Keep Shopping</a>
                 <a href="checkout_multi.php" class="btn btn-checkout">Checkout Now</a>
             </div>
